@@ -19,6 +19,11 @@ public class CustomerController {
         this.customerService=customerService;
     }
 
+    @GetMapping("/home")
+    public String home(){
+        return "Hello Im the home page";
+    }
+
     @GetMapping
     public List<CustomerResponse> getCustomers(){
         return customerService.getAllCustomers();
