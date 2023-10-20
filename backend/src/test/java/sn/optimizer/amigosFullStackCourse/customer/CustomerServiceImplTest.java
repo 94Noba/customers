@@ -47,7 +47,7 @@ class CustomerServiceImplTest {
         assertThat(expected)
                 .satisfies(c->{
                     assertThat(c.getAge().equals(customer.getAge())).isTrue();
-                    assertThat(c.getName().equals(customer.getName())).isFalse();
+                    assertThat(c.getName().equals(customer.getName())).isTrue();
                     assertThat(c.getEmail().equals(customer.getEmail())).isTrue();
                 });
     }
@@ -64,7 +64,7 @@ class CustomerServiceImplTest {
                .satisfies(e->{
                    assertThat((ApplicationException)e)
                            .satisfies(ae->{
-                               assertThat(ae.getErrorCode().equals(ErrorCode.CUSTOMER_NOT_FOUND)).isFalse();
+                               assertThat(ae.getErrorCode().equals(ErrorCode.CUSTOMER_NOT_FOUND)).isTrue();
                            });
                });
         verify(customerJpaRepository).findById(id);
