@@ -16,7 +16,7 @@ public abstract class MainDataAccessTest {
 
     @Container
     protected static final PostgreSQLContainer<?> psqlContainer=new PostgreSQLContainer<>("postgres")
-            .withDatabaseName("postgres-app-data-base-test")
+            .withDatabaseName("customer-database-test")
             .withUsername("test-username")
             .withPassword("test-password");
 

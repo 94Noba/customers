@@ -7,6 +7,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import sn.optimizer.amigosFullStackCourse.customer.data.CustomerRegistrationRequest;
 import sn.optimizer.amigosFullStackCourse.customer.data.CustomerUpdateRequest;
 import sn.optimizer.amigosFullStackCourse.customer.repository.CustomerJpaRepository;
+import sn.optimizer.amigosFullStackCourse.customer.validator.ValidationResult;
 import sn.optimizer.amigosFullStackCourse.exception.ApplicationException;
 import sn.optimizer.amigosFullStackCourse.exception.CustomerRegistrationException;
 import sn.optimizer.amigosFullStackCourse.exception.ErrorCode;
@@ -176,10 +177,9 @@ class CustomerServiceImplTest {
                 .satisfies(e->{
                     assertThat((CustomerRegistrationException)e).satisfies(ce->{
                         assertThat(ce.getErrorCode().equals(ErrorCode.REGISTRATION_REQUEST_NOT_VALID)).isTrue();
-                        assertThat(ce.getValidationResults()
-                                .stream()
-                                .anyMatch(rs->rs.getFieldName().equals("Name")&&
-                                        rs.getResult().equals("The name is not valid"))).isTrue();
+                        assertThat(ce.getValidationResults())
+                                .usingRecursiveFieldByFieldElementComparator()
+                                .contains(new ValidationResult("Name", "The name is not valid"));
                     });
                 });
     }
@@ -195,10 +195,9 @@ class CustomerServiceImplTest {
                 .satisfies(e->{
                     assertThat((CustomerRegistrationException)e).satisfies(re->{
                         assertThat(re.getErrorCode().equals(ErrorCode.REGISTRATION_REQUEST_NOT_VALID)).isTrue();
-                        assertThat(re.getValidationResults()
-                                .stream()
-                                .allMatch(vr->vr.getFieldName().equals("Email")&&
-                                        vr.getResult().equals("The email is not valid"))).isTrue();
+                        assertThat(re.getValidationResults())
+                                .usingRecursiveFieldByFieldElementComparator()
+                                .contains(new ValidationResult("Email", "The email is not valid"));
                     });
                 });
     }

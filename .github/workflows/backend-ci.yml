@@ -7,7 +7,6 @@ on:
     paths:
       - backend/**
 
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,4 +35,4 @@ jobs:
           java-version: '17'
           cache: 'maven'
       - name: run unit and integration test
-        run: mvn -ntp -B clean verify
+        run: mvn -ntp -B verify
