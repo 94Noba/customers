@@ -39,7 +39,7 @@ public class CustomerIntegrationTest {
         String email=fakeName.lastName().strip()+random.nextInt(0, 500)+"@optimizer.com";
         int age=random.nextInt(15, 60);
 
-        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, age);
+        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, "password12345", age);
         CustomerResponse expected=new CustomerResponse(name, email, age) ;
 
         webTestClient.post()
@@ -90,7 +90,7 @@ public class CustomerIntegrationTest {
         String email=fakeName.lastName().strip()+random.nextInt(0, 500)+"@optimizer.com";
         int age=random.nextInt(15, 60);
 
-        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, age);
+        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, "password12345", age);
         CustomerResponse expected=new CustomerResponse(name, email, age) ;
 
         webTestClient.post()
@@ -153,7 +153,7 @@ public class CustomerIntegrationTest {
         String email=name+random.nextInt(0, 500)+"@optimizer.com";
         int age=random.nextInt(15, 60);
 
-        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, age);
+        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, "password12345",age);
         CustomerResponse expected=new CustomerResponse(name, email, age) ;
 
         webTestClient.post()
@@ -217,7 +217,7 @@ public class CustomerIntegrationTest {
         String email=fakeName.lastName().strip()+random.nextInt(0, 500)+"@optimizer.com";
         int age=random.nextInt(15, 60);
 
-        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, age);
+        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, "password12345", age);
         CustomerResponse expected=new CustomerResponse(name, email, age) ;
 
         webTestClient.post()
@@ -267,5 +267,52 @@ public class CustomerIntegrationTest {
                 .usingRecursiveComparison()
                 .comparingOnlyFields("name", "email", "age")
                 .isEqualTo(updated);
+    }
+
+    @Test
+    void canUpdateCustomerPassword(){
+        Faker faker=new Faker();
+        Random random=new Random();
+        Name fakeName=faker.name();
+        String name= fakeName.fullName().strip();
+        String email=fakeName.lastName().strip()+random.nextInt(0, 500)+"@optimizer.com";
+        int age=random.nextInt(15, 60);
+
+        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, "password12345", age);
+        CustomerResponse expected=new CustomerResponse(name, email, age) ;
+
+        webTestClient.post()
+                .uri("/api/v1/customers/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(Mono.just(request), CustomerRegistrationRequest.class)
+                .exchange()
+                .expectStatus()
+                .isOk();
+
+        CustomerResponse response=webTestClient.get()
+                .uri("/api/v1/customers/{email}", email)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectBody(CustomerResponse.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(response)
+                .usingRecursiveComparison()
+                .comparingOnlyFields("name", "email", "age")
+                .isEqualTo(expected);
+
+        String newPassword="newpassword12345";
+        CustomerUpdateRequest updateRequest=new CustomerUpdateRequest(email,  newPassword, "password");
+
+        webTestClient.method(HttpMethod.PATCH)
+                .uri("/api/v1/customers/update")
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Mono.just(updateRequest), CustomerUpdateRequest.class)
+                .exchange()
+                .expectStatus()
+                .isOk();
     }
 }

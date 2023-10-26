@@ -37,9 +37,13 @@ class CustomerServiceImplTest {
     @Test
     void getCustomerById() {
         Long id=10L;
-        Customer customer=Customer.builder().id(id)
-                        .email("email").name("name").age(20)
-                        .build();
+        Customer customer=Customer.builder()
+                    .id(id)
+                    .email("email")
+                    .password("password12345")
+                    .name("name")
+                    .age(20)
+                    .build();
 
         when(customerJpaRepository.findById(id)).thenReturn(Optional.of(customer));
 
@@ -50,6 +54,7 @@ class CustomerServiceImplTest {
                     assertThat(c.getAge().equals(customer.getAge())).isTrue();
                     assertThat(c.getName().equals(customer.getName())).isTrue();
                     assertThat(c.getEmail().equals(customer.getEmail())).isTrue();
+                    assertThat(c.getPassword().equals(customer.getPassword())).isTrue();
                 });
     }
 
@@ -90,7 +95,7 @@ class CustomerServiceImplTest {
     @Test
     void canRegisterCustomer() {
         CustomerRegistrationRequest request=new CustomerRegistrationRequest("Sidi Ba",
-                "sidi@optimizer.com", 28);
+                "sidi@optimizer.com", "password12345", 28);
 
         ArgumentCaptor<Customer>customerArgumentCaptor=ArgumentCaptor.forClass(Customer.class);
         underTest.registerCustomer(request);
@@ -103,6 +108,7 @@ class CustomerServiceImplTest {
                     assertThat(c.getAge().equals(request.age())).isTrue();
                     assertThat(c.getName().equals(request.name())).isTrue();
                     assertThat(c.getEmail().equals(request.email())).isTrue();
+                    assertThat(c.getPassword().equals(request.password())).isTrue();
                 });
     }
 
@@ -110,7 +116,7 @@ class CustomerServiceImplTest {
     void canRegisterCustomerFailIfCustomerAlreadyExist(){
         String email="sidi@optimizer.com";
         CustomerRegistrationRequest request=new CustomerRegistrationRequest("Sidi Ba",
-                email, 28);
+                email, "password12345", 28);
 
         when(customerJpaRepository.existsByEmail(email))
                 .thenReturn(true);
@@ -131,10 +137,11 @@ class CustomerServiceImplTest {
     @Test
     void registerCustomerWillFailIfNameIsNotValid(){
         CustomerRegistrationRequest request=new CustomerRegistrationRequest("",
-                "sidi@optimizer.com", 28);
+                "sidi@optimizer.com", "password12345", 28);
 
         assertThatThrownBy(()->underTest.registerCustomer(request))
                 .isExactlyInstanceOf(CustomerRegistrationException.class);
+
 
         verify(customerJpaRepository, never()).save(CustomerRegistrationRequest
                 .customerRegistrationRequestToCustomer(request));
@@ -144,7 +151,7 @@ class CustomerServiceImplTest {
     @Test
     void registerCustomerWillFailIfEmailIsNotValid(){
         CustomerRegistrationRequest request=new CustomerRegistrationRequest("Sidi Ba",
-                "sidioptimizer.com", 28);
+                "sidioptimizer.com", "password1234", 28);
 
         assertThatThrownBy(()->underTest.registerCustomer(request))
                 .isExactlyInstanceOf(CustomerRegistrationException.class);
@@ -155,9 +162,20 @@ class CustomerServiceImplTest {
     }
 
     @Test
+    void registerCustomerWillFailIfPasswordIsNotValid(){
+        CustomerRegistrationRequest request=new CustomerRegistrationRequest("Sidi Ba",
+                "sidi@optimizer.com", "pa", 28);
+
+        assertThatThrownBy(()->underTest.registerCustomer(request))
+                .isExactlyInstanceOf(CustomerRegistrationException.class);
+
+        verify(customerJpaRepository, never()).save(any(Customer.class));
+    }
+
+    @Test
     void registerCustomerWillFailIfAgeIsNotValid(){
         CustomerRegistrationRequest request=new CustomerRegistrationRequest("Sidi Ba",
-                "sidi@optimizer.com", null);
+                "sidi@optimizer.com", "password12345", null);
 
         assertThatThrownBy(()->underTest.registerCustomer(request))
                 .isExactlyInstanceOf(CustomerRegistrationException.class);
@@ -169,7 +187,7 @@ class CustomerServiceImplTest {
     @Test
     void canThrowCustomerRegistrationExceptionIfCustomerRegistrationRequestNameIsInvalid(){
         CustomerRegistrationRequest request=new CustomerRegistrationRequest("",
-                "email", 29);
+                "email", "password12345", 29);
 
         assertThatThrownBy(()->underTest.registerCustomer(request))
                 .isExactlyInstanceOf(CustomerRegistrationException.class)
@@ -187,7 +205,7 @@ class CustomerServiceImplTest {
     @Test
     void canThrowCustomerRegistrationExceptionIfCustomerRegistrationRequestEmailIsInvalid(){
         CustomerRegistrationRequest request=new CustomerRegistrationRequest("Sidi Ba",
-                "email.sidi.com", 29);
+                "email.sidi.com", "password12345", 29);
 
         assertThatThrownBy(()->underTest.registerCustomer(request))
                 .isExactlyInstanceOf(CustomerRegistrationException.class)
@@ -205,7 +223,7 @@ class CustomerServiceImplTest {
     @Test
     void canThrowCustomerRegistrationExceptionIfCustomerRegistrationRequestAgeIsInvalid(){
         CustomerRegistrationRequest request=new CustomerRegistrationRequest("Sidi Ba",
-                "sidi@optimizer.com", null);
+                "sidi@optimizer.com", "password12345", null);
 
         assertThatThrownBy(()->underTest.registerCustomer(request))
                 .isExactlyInstanceOf(CustomerRegistrationException.class)
@@ -223,9 +241,29 @@ class CustomerServiceImplTest {
     }
 
     @Test
+    void canThrowCustomerRegistrationExceptionIfCustomerRegistrationRequestPasswordIsNotValid(){
+        CustomerRegistrationRequest request=new CustomerRegistrationRequest("Sidi Ba",
+                "sidi@optimizer.com", "", 28);
+
+        assertThatThrownBy(()->underTest.registerCustomer(request))
+                .isExactlyInstanceOf(CustomerRegistrationException.class)
+                .hasMessage("Registration validation failed")
+                .satisfies(e->{
+                    assertThat((CustomerRegistrationException)e)
+                            .satisfies(re->{
+                                assertThat(re.getErrorCode().equals(ErrorCode.REGISTRATION_REQUEST_NOT_VALID)).isTrue();
+                                assertThat(re.getValidationResults()
+                                        .stream()
+                                        .allMatch(vr->vr.getFieldName().equals("Password")&&
+                                                vr.getResult().equals("The password is not valid"))).isTrue();
+                            });
+                });
+    }
+
+    @Test
     void canDeleteCustomer(){
         String email="sidi@optimizer.com";
-        Customer customer=new Customer("Sidi Ba", email, 28);
+        Customer customer=new Customer("Sidi Ba", email, "password", 28, true);
 
         when(customerJpaRepository.findByEmail(email)).thenReturn(Optional.of(customer));
 
@@ -254,7 +292,7 @@ class CustomerServiceImplTest {
     @Test
     void canGetCustomerByEmail() {
         String email="sidi@optimizer.com";
-        Customer customer=new Customer("Sidi Ba", email, 28);
+        Customer customer=new Customer("Sidi Ba", email, "password", 28, true);
 
         when(customerJpaRepository.findByEmail(email))
                 .thenReturn(Optional.of(customer));
@@ -262,11 +300,9 @@ class CustomerServiceImplTest {
         Customer expected=underTest.getCustomerByEmail(email);
 
         verify(customerJpaRepository).findByEmail(email);
-        assertThat(expected).satisfies(c->{
-            assertThat(c.getName().equals(customer.getName())).isTrue();
-            assertThat(c.getEmail().equals(customer.getEmail())).isTrue();
-            assertThat(c.getAge().equals(customer.getAge())).isTrue();
-        });
+        assertThat(expected).usingRecursiveComparison()
+                .comparingOnlyFields("name", "email", "password", "age", "active")
+                .isEqualTo(customer);
     }
 
     @Test
@@ -307,7 +343,7 @@ class CustomerServiceImplTest {
     void canUpdateEmailCustomer(){
         String email="sidi@gmail.com";
         String updateEmail="sidi@optimizer.com";
-        Customer customer=new Customer("Sidi Ba", email, 28);
+        Customer customer=new Customer("Sidi Ba", email, "password", 28, true );
 
         CustomerUpdateRequest updateRequest=Mockito.mock(CustomerUpdateRequest.class);
 
@@ -325,7 +361,7 @@ class CustomerServiceImplTest {
     void canUpdateEmailCustomerFailIfEmailIsNotValid(){
         CustomerUpdateRequest request=Mockito.mock(CustomerUpdateRequest.class);
         String email="sidi@Optimizer.com";
-        Customer customer=new Customer("Sidi Ba", email, 28);
+        Customer customer=new Customer("Sidi Ba", email, "password", 28, true);
 
         when(customerJpaRepository.findByEmail(email)).thenReturn(Optional.of(customer));
         when(request.patch()).thenReturn("something-wrong");
@@ -348,7 +384,7 @@ class CustomerServiceImplTest {
     void canUpdateCustomerAge(){
         String email="sidi@gmail.com";
         int updateAge=29;
-        Customer customer=new Customer("Sidi Ba", email, 20);
+        Customer customer=new Customer("Sidi Ba", email, "password", 20, true);
 
         CustomerUpdateRequest updateRequest=Mockito.mock(CustomerUpdateRequest.class);
 
@@ -367,7 +403,7 @@ class CustomerServiceImplTest {
         CustomerUpdateRequest request=Mockito.mock(CustomerUpdateRequest.class);
         String email="sidi@Optimizer.com";
         int age=4;
-        Customer customer=new Customer("Sidi Ba", email, 28);
+        Customer customer=new Customer("Sidi Ba", email, "password", 28, true);
 
         when(customerJpaRepository.findByEmail(email)).thenReturn(Optional.of(customer));
         when(request.patch()).thenReturn(age);

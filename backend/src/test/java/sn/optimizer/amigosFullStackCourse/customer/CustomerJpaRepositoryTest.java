@@ -29,8 +29,11 @@ class CustomerJpaRepositoryTest extends MainDataAccessTest {
         Customer customer= Customer.builder()
                 .name("testname")
                 .email("testemail")
+                .password("password")
                 .age(19)
+                .active(true)
                 .build();
+
         underTest.save(customer);
 
         assertThat(underTest.existsByEmail("testemail")).isTrue();
@@ -41,8 +44,11 @@ class CustomerJpaRepositoryTest extends MainDataAccessTest {
         Customer customer= Customer.builder()
                 .name("testname")
                 .email("testemail")
+                .password("password")
                 .age(19)
+                .active(true)
                 .build();
+
         underTest.save(customer);
 
         assertThat(underTest.existsByEmail("email")).isFalse();
@@ -53,8 +59,11 @@ class CustomerJpaRepositoryTest extends MainDataAccessTest {
         Customer customer= Customer.builder()
                 .name("testname")
                 .email("testemail")
+                .password("password")
                 .age(19)
+                .active(true)
                 .build();
+
         underTest.save(customer);
 
         Optional<Customer> expected=underTest.findByEmail("testemail");
@@ -64,6 +73,8 @@ class CustomerJpaRepositoryTest extends MainDataAccessTest {
                     assertThat(c.getEmail().equals(customer.getEmail())).isTrue();
                     assertThat(c.getName().equals(customer.getName())).isTrue();
                     assertThat(c.getAge().equals(customer.getAge())).isTrue();
+                    assertThat(c.getPassword().equals("password")).isTrue();
+                    assertThat(c.isActive()).isTrue();
                 });
     }
 
@@ -72,8 +83,11 @@ class CustomerJpaRepositoryTest extends MainDataAccessTest {
         Customer customer= Customer.builder()
                 .name("testname")
                 .email("testemail")
+                .password("password")
                 .age(19)
+                .active(true)
                 .build();
+
         underTest.save(customer);
 
         assertThat(underTest.findByEmail("email")).isEmpty();

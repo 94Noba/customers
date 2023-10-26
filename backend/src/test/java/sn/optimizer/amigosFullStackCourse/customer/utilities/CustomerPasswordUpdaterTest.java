@@ -6,13 +6,13 @@ import sn.optimizer.amigosFullStackCourse.customer.Customer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class CustomerAgeUpdaterTest {
+public class CustomerPasswordUpdaterTest {
 
     private static CustomerUpdater underTest;
 
     @BeforeAll
     static void setUp(){
-       underTest=CustomerUpdaterFactory.of("age");
+        underTest=CustomerUpdaterFactory.of("password");
     }
 
     @Test
@@ -21,11 +21,11 @@ class CustomerAgeUpdaterTest {
         Customer customer=new Customer("Sidi BA", "sidi@optimizer.com",
                 "password", 25, true);
 
-        int age=29;
-        int rs=underTest.updateCustomer(customer, age);
+        String password="password12345";
+        int rs=underTest.updateCustomer(customer, password);
 
         assertThat(rs==1).isTrue();
-        assertThat(customer.getAge().equals(age)).isTrue();
+        assertThat(customer.getPassword().equals(password)).isTrue();
     }
 
     @Test
@@ -33,10 +33,10 @@ class CustomerAgeUpdaterTest {
         Customer customer=new Customer("Sidi BA", "sidi@optimizer.com",
                 "password", 25, true);
 
-        int age=4;
-        int rs=underTest.updateCustomer(customer, age);
+        String password="pa";
+        int rs=underTest.updateCustomer(customer, password);
 
         assertThat(rs==-1).isTrue();
-        assertThat(customer.getAge().equals(age)).isFalse();
+        assertThat(customer.getPassword().equals(password)).isFalse();
     }
 }

@@ -17,6 +17,15 @@ public interface CustomerRegistrationRequestValidator extends Consumer<CustomerR
         };
     }
 
+    static CustomerRegistrationRequestValidator isPasswordValid(List<ValidationResult> results){
+        return customerRegistrationRequest -> {
+            if(customerRegistrationRequest.password()==null
+                    || customerRegistrationRequest.password().isBlank()
+                    || customerRegistrationRequest.password().length()<5)
+                results.add(new ValidationResult("Password", "The password is not valid"));
+        };
+    }
+
     static CustomerRegistrationRequestValidator isNameValid(List<ValidationResult> results) {
         return customerRegistrationRequest -> {
             if (customerRegistrationRequest.name() == null
