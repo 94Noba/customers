@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static sn.optimizer.amigosFullStackCourse.customer.validator.CustomerRegistrationRequestValidator.*;
+
 @Service
 public  class CustomerServiceImpl implements CustomerService {
 
@@ -63,9 +65,10 @@ public  class CustomerServiceImpl implements CustomerService {
 
     private void validateCustomerRegistrationRequest(CustomerRegistrationRequest customerRegistrationRequest){
         List<ValidationResult> results= new ArrayList<>();
-        CustomerRegistrationRequestValidator.isEmailValid(results)
-                .and(CustomerRegistrationRequestValidator.isNameValid(results))
-                .and(CustomerRegistrationRequestValidator.isAgeValid(results))
+        isEmailValid(results)
+                .and(isNameValid(results))
+                .and(isPasswordValid(results))
+                .and(isAgeValid(results))
                 .accept(customerRegistrationRequest);
         if (!results.isEmpty())
             throw new CustomerRegistrationException("Registration validation failed", results,

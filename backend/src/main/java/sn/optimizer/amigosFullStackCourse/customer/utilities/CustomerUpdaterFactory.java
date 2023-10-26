@@ -6,6 +6,7 @@ public class CustomerUpdaterFactory {
         return switch (updater) {
             case "email" -> new CustomerEmailUpdater();
             case "age" -> new CustomerAgeUpdater();
+            case "password" -> new CustomerPasswordUpdater();
             default -> null;
         };
     }

@@ -13,6 +13,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
+import static sn.optimizer.amigosFullStackCourse.customer.validator.CustomerRegistrationRequestValidator.*;
 
 class CustomerRegistrationRequestValidatorTest {
 
@@ -34,7 +35,7 @@ class CustomerRegistrationRequestValidatorTest {
     @Test
     void canValidateEmail() {
         when(request.email()).thenReturn("sidi@optimizer.com");
-        CustomerRegistrationRequestValidator.isEmailValid(validationResults)
+        isEmailValid(validationResults)
                 .accept(request);
 
         assertThat(validationResults.isEmpty()).isTrue();
@@ -44,7 +45,7 @@ class CustomerRegistrationRequestValidatorTest {
     void canUnValidateEmail(){
         when(request.email()).thenReturn("sidi.optimizer.com");
 
-        CustomerRegistrationRequestValidator.isEmailValid(validationResults)
+        isEmailValid(validationResults)
                 .accept(request);
 
         assertThat(validationResults.isEmpty()).isFalse();
@@ -61,7 +62,7 @@ class CustomerRegistrationRequestValidatorTest {
     void canValidateName() {
         when(request.name()).thenReturn("Sidi Ba");
 
-        CustomerRegistrationRequestValidator.isNameValid(validationResults)
+        isNameValid(validationResults)
                 .accept(request);
 
         assertThat(validationResults.isEmpty()).isTrue();
@@ -71,7 +72,7 @@ class CustomerRegistrationRequestValidatorTest {
     void canInvalidateName(){
         when(request.name()).thenReturn("");
 
-        CustomerRegistrationRequestValidator.isNameValid(validationResults)
+        isNameValid(validationResults)
                 .accept(request);
 
         assertThat(validationResults.isEmpty()).isFalse();
@@ -88,7 +89,7 @@ class CustomerRegistrationRequestValidatorTest {
     void canValidateAge() {
         when(request.age()).thenReturn(28);
 
-        CustomerRegistrationRequestValidator.isAgeValid(validationResults)
+        isAgeValid(validationResults)
                 .accept(request);
 
         assertThat(validationResults.isEmpty()).isTrue();
@@ -98,7 +99,7 @@ class CustomerRegistrationRequestValidatorTest {
     void canInvalidateAge(){
         when(request.age()).thenReturn(null);
 
-        CustomerRegistrationRequestValidator.isAgeValid(validationResults)
+        isAgeValid(validationResults)
                 .accept(request);
 
         assertThat(validationResults.isEmpty()).isFalse();
@@ -112,15 +113,38 @@ class CustomerRegistrationRequestValidatorTest {
     }
 
     @Test
+    void canValidatePassword(){
+        when(request.password()).thenReturn("password12345");
+
+        isPasswordValid(validationResults)
+                .accept(request);
+
+        assertThat(validationResults.isEmpty()).isTrue();
+    }
+
+    @Test
+    void canInvalidatePassword(){
+        when(request.password()).thenReturn("pa");
+
+        isPasswordValid(validationResults)
+                .accept(request);
+
+        assertThat(validationResults)
+                .usingRecursiveFieldByFieldElementComparator()
+                .contains(new ValidationResult("Password", "The password is not valid"));
+    }
+
+    @Test
     void canProcessEntireCustomerRegisterRequestValidationIfAllFieldsAreValid() {
         when(request.name()).thenReturn("Sidi Ba");
         when(request.email()).thenReturn("sidi@optimizer.com");
+        when(request.password()).thenReturn("password12345");
         when(request.age()).thenReturn(28);
 
-        CustomerRegistrationRequestValidator
-                .isEmailValid(validationResults)
-                .and(CustomerRegistrationRequestValidator.isNameValid(validationResults))
-                .and(CustomerRegistrationRequestValidator.isAgeValid(validationResults))
+        isEmailValid(validationResults)
+                .and(isPasswordValid(validationResults))
+                .and(isNameValid(validationResults))
+                .and(isAgeValid(validationResults))
                 .accept(request);
 
         assertThat(validationResults.isEmpty()).isTrue();
@@ -130,12 +154,13 @@ class CustomerRegistrationRequestValidatorTest {
     void canProcessEntireCustomerRegisterRequestValidationIfAllFieldsAreInValid(){
         when(request.name()).thenReturn(null);
         when(request.email()).thenReturn(null);
+        when(request.password()).thenReturn(null);
         when(request.age()).thenReturn(null);
 
-        CustomerRegistrationRequestValidator
-                .isEmailValid(validationResults)
-                .and(CustomerRegistrationRequestValidator.isNameValid(validationResults))
-                .and(CustomerRegistrationRequestValidator.isAgeValid(validationResults))
+        isEmailValid(validationResults)
+                .and(isPasswordValid(validationResults))
+                .and(isNameValid(validationResults))
+                .and(isAgeValid(validationResults))
                 .accept(request);
 
         assertThat(validationResults.isEmpty()).isFalse();
@@ -152,6 +177,10 @@ class CustomerRegistrationRequestValidatorTest {
                     assertThat(vr.stream()
                             .anyMatch(r->r.getFieldName().equals("Age")&&
                                     r.getResult().equals("The age is not valid")))
+                            .isTrue();
+                    assertThat(vr.stream()
+                            .anyMatch(r->r.getFieldName().equals("Password")&&
+                                    r.getResult().equals("The password is not valid")))
                             .isTrue();
                 });
     }
