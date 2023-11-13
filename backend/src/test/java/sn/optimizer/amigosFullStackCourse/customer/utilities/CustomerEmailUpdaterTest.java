@@ -3,6 +3,8 @@ package sn.optimizer.amigosFullStackCourse.customer.utilities;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import sn.optimizer.amigosFullStackCourse.customer.Customer;
+import sn.optimizer.amigosFullStackCourse.customer.security.permission.Role;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.updaterImpls.CustomerUpdaterFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,13 +14,13 @@ class CustomerEmailUpdaterTest {
 
     @BeforeAll
     static void  setUp() {
-        underTest=CustomerUpdaterFactory.of("email");
+        underTest= CustomerUpdaterFactory.of("email");
     }
 
     @Test
     void canUpdateCustomerIfEmailIsValid() {
         Customer customer=new Customer("Sidi BA", "sidiba@optimizer.com",
-                "password", 25, true);
+                "password", Role.CUSTOMER, 25, true);
         String email="sidi@optimizer.com";
 
         int rs=underTest.updateCustomer(customer, email);
@@ -30,7 +32,7 @@ class CustomerEmailUpdaterTest {
     @Test
     void canUpdateCustomerFailIfEmailIsNotValid(){
         Customer customer=new Customer("Sidi BA", "sidi@optimizer.com",
-                "password", 25, true);
+                "password", Role.VIP, 25, true);
         String email="something-wrong";
 
         int rs=underTest.updateCustomer(customer, email);

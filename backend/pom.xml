@@ -59,7 +59,6 @@
 			<scope>runtime</scope>
 		</dependency>
 
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
@@ -71,6 +70,17 @@
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 
 		<dependency>
@@ -182,7 +192,7 @@
 					<excludes>
 						<exclude>**/*IntegrationTest.java</exclude>
 						<exclude>**/*IT.java</exclude>
-						<exclude>**/*It</exclude>
+						<exclude>**/*It.java</exclude>
 					</excludes>
 				</configuration>
 			</plugin>
@@ -201,14 +211,12 @@
 						<test.server.port>${tomcat.http.port}</test.server.port>
 					</systemPropertyVariables>
 				</configuration>
-
 			</plugin>
 
 			<plugin>
 				<groupId>com.google.cloud.tools</groupId>
 				<artifactId>jib-maven-plugin</artifactId>
 				<version>3.4.0</version>
-
 				<configuration>
 					<from>
 						<image>eclipse-temurin:17</image>

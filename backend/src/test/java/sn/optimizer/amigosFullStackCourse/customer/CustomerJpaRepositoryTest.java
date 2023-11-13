@@ -7,6 +7,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import sn.optimizer.amigosFullStackCourse.MainDataAccessTest;
 import sn.optimizer.amigosFullStackCourse.customer.repository.CustomerJpaRepository;
+import sn.optimizer.amigosFullStackCourse.customer.security.permission.Role;
 
 import java.util.Optional;
 
@@ -30,6 +31,7 @@ class CustomerJpaRepositoryTest extends MainDataAccessTest {
                 .name("testname")
                 .email("testemail")
                 .password("password")
+                .role(Role.CUSTOMER)
                 .age(19)
                 .active(true)
                 .build();
@@ -45,6 +47,7 @@ class CustomerJpaRepositoryTest extends MainDataAccessTest {
                 .name("testname")
                 .email("testemail")
                 .password("password")
+                .role(Role.VIP)
                 .age(19)
                 .active(true)
                 .build();
@@ -60,6 +63,7 @@ class CustomerJpaRepositoryTest extends MainDataAccessTest {
                 .name("testname")
                 .email("testemail")
                 .password("password")
+                .role(Role.CUSTOMER)
                 .age(19)
                 .active(true)
                 .build();
@@ -84,6 +88,7 @@ class CustomerJpaRepositoryTest extends MainDataAccessTest {
                 .name("testname")
                 .email("testemail")
                 .password("password")
+                .role(Role.CUSTOMER)
                 .age(19)
                 .active(true)
                 .build();

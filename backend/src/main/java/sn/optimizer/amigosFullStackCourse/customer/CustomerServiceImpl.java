@@ -1,6 +1,7 @@
 package sn.optimizer.amigosFullStackCourse.customer;
 
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sn.optimizer.amigosFullStackCourse.customer.data.CustomerRegistrationRequest;
@@ -9,8 +10,10 @@ import sn.optimizer.amigosFullStackCourse.customer.data.CustomerUpdateRequest;
 import sn.optimizer.amigosFullStackCourse.customer.repository.CustomerJpaRepository;
 import sn.optimizer.amigosFullStackCourse.customer.service.CustomerService;
 import sn.optimizer.amigosFullStackCourse.customer.utilities.CustomerUpdater;
-import sn.optimizer.amigosFullStackCourse.customer.utilities.CustomerUpdaterFactory;
-import sn.optimizer.amigosFullStackCourse.customer.validator.CustomerRegistrationRequestValidator;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.RoleSupplier;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.roleSuppliers.RoleSupplierFactory;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.updaterImpls.CustomerPasswordUpdater;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.updaterImpls.CustomerUpdaterFactory;
 import sn.optimizer.amigosFullStackCourse.customer.validator.ValidationResult;
 import sn.optimizer.amigosFullStackCourse.exception.ApplicationException;
 import sn.optimizer.amigosFullStackCourse.exception.CustomerRegistrationException;
@@ -26,9 +29,11 @@ import static sn.optimizer.amigosFullStackCourse.customer.validator.CustomerRegi
 public  class CustomerServiceImpl implements CustomerService {
 
     private final CustomerJpaRepository customerJpaRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public CustomerServiceImpl(CustomerJpaRepository customerJpaRepository){
+    public CustomerServiceImpl(CustomerJpaRepository customerJpaRepository, PasswordEncoder passwordEncoder){
         this.customerJpaRepository=customerJpaRepository;
+        this.passwordEncoder=passwordEncoder;
     }
     @Override
     public List<CustomerResponse> getAllCustomers() {
@@ -54,12 +59,17 @@ public  class CustomerServiceImpl implements CustomerService {
     @Transactional
     public void registerCustomer(CustomerRegistrationRequest customerRegistrationRequest) {
         this.validateCustomerRegistrationRequest(customerRegistrationRequest);
+        RoleSupplier roleSupplier=RoleSupplierFactory.of(customerRegistrationRequest.role());
+        if(roleSupplier==null)
+            throw new ApplicationException("operation not supported", ErrorCode.NOT_SUPPORTED_OPERATION);
         String email=customerRegistrationRequest.email();
         if(this.isEmailTaken(email))
             throw new ApplicationException("Email ["+email+"] already taken", ErrorCode.EMAIL_ALREADY_TAKEN);
 
         Customer customer=CustomerRegistrationRequest
                 .customerRegistrationRequestToCustomer(customerRegistrationRequest);
+        customer.setPassword(passwordEncoder.encode(customerRegistrationRequest.password()));
+        customer.setRole(roleSupplier.get());
         customerJpaRepository.save(customer);
     }
 
@@ -101,11 +111,15 @@ public  class CustomerServiceImpl implements CustomerService {
     @Transactional
     public void updateCustomer(CustomerUpdateRequest updateRequest) {
         CustomerUpdater updater= CustomerUpdaterFactory.of(updateRequest.type());
+        Object patch=updateRequest.patch();
         if(updater==null)
             throw new ApplicationException("Operation not supported", ErrorCode.NOT_SUPPORTED_OPERATION);
 
         Customer customer=this.getCustomerByEmail(updateRequest.email());
-        int result=updater.updateCustomer(customer, updateRequest.patch());
+        if(updater instanceof CustomerPasswordUpdater)
+            patch=passwordEncoder.encode((String)patch);
+
+        int result=updater.updateCustomer(customer, patch);
         if(result==-1)
             throw new ApplicationException("Update operation failed because ["
                     +updateRequest.type()+"] is not valid", ErrorCode.UPDATE_OPERATION_FAILED);

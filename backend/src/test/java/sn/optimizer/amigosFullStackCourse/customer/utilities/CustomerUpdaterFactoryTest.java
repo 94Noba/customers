@@ -1,15 +1,17 @@
 package sn.optimizer.amigosFullStackCourse.customer.utilities;
 
 import org.junit.jupiter.api.Test;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.updaterImpls.CustomerAgeUpdater;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.updaterImpls.CustomerEmailUpdater;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.updaterImpls.CustomerUpdaterFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 class CustomerUpdaterFactoryTest {
 
     @Test
     void canCreateCustomerEmailUpdater() {
-        CustomerUpdater emailUpdater=CustomerUpdaterFactory.of("email");
+        CustomerUpdater emailUpdater= CustomerUpdaterFactory.of("email");
 
         assertThat(emailUpdater instanceof CustomerEmailUpdater).isTrue();
     }
