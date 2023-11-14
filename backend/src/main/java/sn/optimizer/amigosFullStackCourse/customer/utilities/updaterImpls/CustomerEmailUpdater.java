@@ -1,9 +1,10 @@
-package sn.optimizer.amigosFullStackCourse.customer.utilities;
+package sn.optimizer.amigosFullStackCourse.customer.utilities.updaterImpls;
 
 import sn.optimizer.amigosFullStackCourse.customer.Customer;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.CustomerUpdater;
 import sn.optimizer.amigosFullStackCourse.customer.validator.EmailValidator;
 
-public class CustomerEmailUpdater implements CustomerUpdater{
+public class CustomerEmailUpdater implements CustomerUpdater {
     @Override
     public int updateCustomer(Customer customer, Object patch) {
         if (patch!=null && EmailValidator.validate((String)patch)){

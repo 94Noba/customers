@@ -1,8 +1,9 @@
-package sn.optimizer.amigosFullStackCourse.customer.utilities;
+package sn.optimizer.amigosFullStackCourse.customer.utilities.updaterImpls;
 
 import sn.optimizer.amigosFullStackCourse.customer.Customer;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.CustomerUpdater;
 
-public class CustomerPasswordUpdater implements CustomerUpdater{
+public class CustomerPasswordUpdater implements CustomerUpdater {
     @Override
     public int updateCustomer(Customer customer, Object patch) {
         if(patch!=null){

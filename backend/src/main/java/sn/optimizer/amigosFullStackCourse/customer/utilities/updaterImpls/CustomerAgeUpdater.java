@@ -1,6 +1,7 @@
-package sn.optimizer.amigosFullStackCourse.customer.utilities;
+package sn.optimizer.amigosFullStackCourse.customer.utilities.updaterImpls;
 
 import sn.optimizer.amigosFullStackCourse.customer.Customer;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.CustomerUpdater;
 
 public class CustomerAgeUpdater implements CustomerUpdater {
     @Override

@@ -5,9 +5,8 @@ import com.github.javafaker.Name;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
@@ -15,184 +14,178 @@ import sn.optimizer.amigosFullStackCourse.customer.data.CustomerDeletionRequest;
 import sn.optimizer.amigosFullStackCourse.customer.data.CustomerRegistrationRequest;
 import sn.optimizer.amigosFullStackCourse.customer.data.CustomerResponse;
 import sn.optimizer.amigosFullStackCourse.customer.data.CustomerUpdateRequest;
+import sn.optimizer.amigosFullStackCourse.customer.security.jwt.JwtService;
+import sn.optimizer.amigosFullStackCourse.customer.utilities.roleSuppliers.RoleSupplierFactory;
 import sn.optimizer.amigosFullStackCourse.exception.ApplicationExceptionPayload;
 import sn.optimizer.amigosFullStackCourse.exception.ErrorCode;
 
-import java.util.List;
 import java.util.Random;
-
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class CustomerIntegrationTest {
 
     @Autowired
-    private WebTestClient webTestClient;
+    private WebTestClient apiClient;
 
-    @Test
-    void canRegisterCustomer(){
+    @Autowired
+    private JwtService jwtService;
+
+    private CustomerRegistrationRequest registrationRequest;
+
+
+
+    public void init(String role){
         Faker faker=new Faker();
-        Random random=new Random();
-        Name fakeName=faker.name();
-        String name= fakeName.fullName().strip();
-        String email=fakeName.lastName().strip()+random.nextInt(0, 500)+"@optimizer.com";
-        int age=random.nextInt(15, 60);
+        Name name=faker.name();
+        Random id=new Random();
+        String fullName= name.fullName();
+        String email=name.lastName()+id.nextInt(0, 100)+"@optimizer.com";
+        String password=name.firstName()+"123";
+        int age=id.nextInt(15, 30);
 
-        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, "password12345", age);
-        CustomerResponse expected=new CustomerResponse(name, email, age) ;
+        registrationRequest=new CustomerRegistrationRequest(fullName, email, password,
+                role, age);
+    }
 
-        webTestClient.post()
-                .uri("/api/v1/customers/register")
-                .accept(MediaType.APPLICATION_JSON)
+    private String registrationAndAuth(String role){
+
+        init(role);
+        apiClient.post()
+                .uri("/api/v1/register")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(Mono.just(request), CustomerRegistrationRequest.class)
+                .body(Mono.just(registrationRequest), CustomerRegistrationRequest.class)
                 .exchange()
                 .expectStatus()
                 .isOk();
 
-        List<CustomerResponse> response=webTestClient.get()
-                .uri("/api/v1/customers")
-                .accept(MediaType.APPLICATION_JSON)
+        return apiClient.post()
+                .uri(uriBuilder ->uriBuilder
+                        .path("/api/v1/auth")
+                        .queryParam("username", registrationRequest.email())
+                        .queryParam("password", registrationRequest.password())
+                        .build())
                 .exchange()
                 .expectStatus()
                 .isOk()
-                .expectBodyList(CustomerResponse.class)
+                .expectBody(Void.class)
                 .returnResult()
-                .getResponseBody();
-
-        assertThat(response)
-                .usingRecursiveFieldByFieldElementComparator()
-                .contains(expected);
-
-        CustomerResponse response1=webTestClient.get()
-                .uri("/api/v1/customers/{email}", email)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus()
-                .isOk()
-                .expectBody(CustomerResponse.class)
-                .returnResult()
-                .getResponseBody();
-
-        assertThat(response1)
-                .usingRecursiveComparison()
-                .comparingOnlyFields("name", "email", "age")
-                .isEqualTo(expected);
+                .getResponseHeaders()
+                .getFirst(HttpHeaders.AUTHORIZATION);
     }
 
     @Test
-    void canDeleteCustomer(){
-        Faker faker=new Faker();
-        Random random=new Random();
-        Name fakeName=faker.name();
-        String name= fakeName.fullName().strip();
-        String email=fakeName.lastName().strip()+random.nextInt(0, 500)+"@optimizer.com";
-        int age=random.nextInt(15, 60);
+    public void canRegisterCustomer(){
 
-        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, "password12345", age);
-        CustomerResponse expected=new CustomerResponse(name, email, age) ;
+        String token=registrationAndAuth("customer");
 
-        webTestClient.post()
-                .uri("/api/v1/customers/register")
-                .contentType(MediaType.APPLICATION_JSON)
+        CustomerResponse expected= apiClient.get()
+                .uri("/api/v1/customer/{email}", registrationRequest.email())
                 .accept(MediaType.APPLICATION_JSON)
-                .body(Mono.just(request), CustomerRegistrationRequest.class)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(token))
                 .exchange()
                 .expectStatus()
-                .isOk();
-
-        CustomerResponse response=webTestClient.get()
-                .uri("/api/v1/customers/{email}", email)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
+                .isOk()
                 .expectBody(CustomerResponse.class)
                 .returnResult()
                 .getResponseBody();
 
-        assertThat(response)
-                .usingRecursiveComparison()
-                .comparingOnlyFields("name", "email", "age")
-                .isEqualTo(expected);
+        assertThat(expected)
+                .satisfies(ex->{
+                    assertThat(ex.email().equals(registrationRequest.email())).isTrue();
+                    assertThat(ex.name().equals(registrationRequest.name())).isTrue();
+                    assertThat(ex.age()==registrationRequest.age()).isTrue();
+                    assertThat(ex.role().equals(
+                            RoleSupplierFactory.of(registrationRequest.role()).get())).isTrue();
+                });
+    }
 
-        CustomerDeletionRequest deletionRequest=new CustomerDeletionRequest(email);
+    @Test
+    public void canRemoveCustomer(){
+        String token=registrationAndAuth("vip");
+        CustomerDeletionRequest deletionRequest=new CustomerDeletionRequest(registrationRequest.email());
 
-        webTestClient.method(HttpMethod.DELETE)
-                .uri("/api/v1/customers/remove")
-                .accept(MediaType.APPLICATION_JSON)
+        apiClient.method(HttpMethod.DELETE)
+                .uri("/api/v1/remove")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Mono.just(deletionRequest), CustomerDeletionRequest.class)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(token))
                 .exchange()
                 .expectStatus()
                 .isOk();
 
-        ApplicationExceptionPayload expectedException=webTestClient.get()
-                .uri("/api/v1/customers/{email}", email)
+        ApplicationExceptionPayload expected=apiClient.get()
+                .uri("/api/v1/customer/{email}", registrationRequest.email())
                 .accept(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(token))
                 .exchange()
                 .expectStatus()
-                .isEqualTo(HttpStatus.CONFLICT)
+                .isUnauthorized()
                 .expectBody(ApplicationExceptionPayload.class)
                 .returnResult()
                 .getResponseBody();
 
-        assertThat(expectedException)
+        assertThat(expected)
                 .satisfies(ex->{
-                    assertThat(ex.message().equals("Customer ["+email+"] not found")).isTrue();
-                    assertThat(ex.code()==1404).isTrue();
-                    assertThat(ex.exception().equals(ErrorCode.CUSTOMER_NOT_FOUND)).isTrue();
+                    assertThat(ex.message().equals("Authorization token invalid")).isTrue();
+                    assertThat(ex.exception().equals(ErrorCode.AUTHORIZATION_TOKEN_INVALID)).isTrue();
+                    assertThat(ex.code()==ErrorCode.AUTHORIZATION_TOKEN_INVALID.getCode()).isTrue();
                 });
     }
 
     @Test
     void canUpdateCustomerEmail(){
-        Faker faker=new Faker();
-        Random random=new Random();
-        Name fakeName=faker.name();
-        String name= fakeName.lastName().strip();
-        String email=name+random.nextInt(0, 500)+"@optimizer.com";
-        int age=random.nextInt(15, 60);
+        String token=registrationAndAuth("vip");
 
-        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, "password12345",age);
-        CustomerResponse expected=new CustomerResponse(name, email, age) ;
+        String newEmail="testest5@optimizer.com";
+        CustomerUpdateRequest updateRequest=new CustomerUpdateRequest(registrationRequest.email(), newEmail,
+                "email");
 
-        webTestClient.post()
-                .uri("/api/v1/customers/register")
+        apiClient.method(HttpMethod.PATCH)
+                .uri("/api/v1/update")
                 .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
-                .body(Mono.just(request), CustomerRegistrationRequest.class)
-                .exchange()
-                .expectStatus()
-                .isOk();
-
-        CustomerResponse response=webTestClient.get()
-                .uri("/api/v1/customers/{email}", email)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectBody(CustomerResponse.class)
-                .returnResult()
-                .getResponseBody();
-
-        assertThat(response)
-                .usingRecursiveComparison()
-                .comparingOnlyFields("name", "email", "age")
-                .isEqualTo(expected);
-
-        String newEmail=name+"newmail@optimizer.com";
-        CustomerUpdateRequest updateRequest=new CustomerUpdateRequest(email,  newEmail, "email");
-
-        webTestClient.method(HttpMethod.PATCH)
-                .uri("/api/v1/customers/update")
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(token))
                 .body(Mono.just(updateRequest), CustomerUpdateRequest.class)
                 .exchange()
                 .expectStatus()
                 .isOk();
 
-        CustomerResponse response1=webTestClient.get()
-                .uri("/api/v1/customers/{email}", newEmail)
+        ApplicationExceptionPayload expected=apiClient.get()
+                .uri("/api/v1/customer/{email}", registrationRequest.email())
                 .accept(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(token))
+                .exchange()
+                .expectStatus()
+                .isUnauthorized()
+                .expectBody(ApplicationExceptionPayload.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(expected)
+                .satisfies(ex->{
+                    assertThat(ex.message().equals("Authorization token invalid")).isTrue();
+                    assertThat(ex.exception().equals(ErrorCode.AUTHORIZATION_TOKEN_INVALID)).isTrue();
+                });
+
+        String newToken=apiClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth")
+                        .queryParam("username", newEmail)
+                        .queryParam("password", registrationRequest.password())
+                        .build())
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody(Void.class)
+                .returnResult()
+                .getResponseHeaders()
+                .getFirst(HttpHeaders.AUTHORIZATION);
+
+        CustomerResponse response=apiClient.get()
+                .uri("/api/v1/customer/{email}", newEmail)
+                .accept(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(newToken))
                 .exchange()
                 .expectStatus()
                 .isOk()
@@ -200,119 +193,98 @@ public class CustomerIntegrationTest {
                 .returnResult()
                 .getResponseBody();
 
-        CustomerResponse updated=new CustomerResponse(name, newEmail, age);
-        assertThat(response1)
-                .usingRecursiveComparison()
-                .comparingOnlyFields("name", "email", "age")
-                .isEqualTo(updated);
+        assertThat(response.email().equals(newEmail)).isTrue();
 
-    }
-
-    @Test
-    void canUpdateCostumerAge(){
-        Faker faker=new Faker();
-        Random random=new Random();
-        Name fakeName=faker.name();
-        String name= fakeName.fullName().strip();
-        String email=fakeName.lastName().strip()+random.nextInt(0, 500)+"@optimizer.com";
-        int age=random.nextInt(15, 60);
-
-        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, "password12345", age);
-        CustomerResponse expected=new CustomerResponse(name, email, age) ;
-
-        webTestClient.post()
-                .uri("/api/v1/customers/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
-                .body(Mono.just(request), CustomerRegistrationRequest.class)
-                .exchange()
-                .expectStatus()
-                .isOk();
-
-        CustomerResponse response=webTestClient.get()
-                .uri("/api/v1/customers/{email}", email)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectBody(CustomerResponse.class)
-                .returnResult()
-                .getResponseBody();
-
-        assertThat(response)
-                .usingRecursiveComparison()
-                .comparingOnlyFields("name", "email", "age")
-                .isEqualTo(expected);
-
-        int newAge=80;
-        CustomerUpdateRequest updateRequest=new CustomerUpdateRequest(email,  newAge, "age");
-
-        webTestClient.method(HttpMethod.PATCH)
-                .uri("/api/v1/customers/update")
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Mono.just(updateRequest), CustomerUpdateRequest.class)
-                .exchange()
-                .expectStatus()
-                .isOk();
-
-        CustomerResponse response1=webTestClient.get()
-                .uri("/api/v1/customers/{email}", email)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectBody(CustomerResponse.class)
-                .returnResult()
-                .getResponseBody();
-
-        CustomerResponse updated=new CustomerResponse(name, email, newAge);
-        assertThat(response1)
-                .usingRecursiveComparison()
-                .comparingOnlyFields("name", "email", "age")
-                .isEqualTo(updated);
     }
 
     @Test
     void canUpdateCustomerPassword(){
-        Faker faker=new Faker();
-        Random random=new Random();
-        Name fakeName=faker.name();
-        String name= fakeName.fullName().strip();
-        String email=fakeName.lastName().strip()+random.nextInt(0, 500)+"@optimizer.com";
-        int age=random.nextInt(15, 60);
+        String token=registrationAndAuth("vip");
 
-        CustomerRegistrationRequest request=new CustomerRegistrationRequest(name, email, "password12345", age);
-        CustomerResponse expected=new CustomerResponse(name, email, age) ;
+        String newPassword="password123";
+        CustomerUpdateRequest updateRequest=new CustomerUpdateRequest(registrationRequest.email(), newPassword, "password");
 
-        webTestClient.post()
-                .uri("/api/v1/customers/register")
+        apiClient.method(HttpMethod.PATCH)
+                .uri("/api/v1/update")
                 .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
-                .body(Mono.just(request), CustomerRegistrationRequest.class)
-                .exchange()
-                .expectStatus()
-                .isOk();
-
-        CustomerResponse response=webTestClient.get()
-                .uri("/api/v1/customers/{email}", email)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectBody(CustomerResponse.class)
-                .returnResult()
-                .getResponseBody();
-
-        assertThat(response)
-                .usingRecursiveComparison()
-                .comparingOnlyFields("name", "email", "age")
-                .isEqualTo(expected);
-
-        String newPassword="newpassword12345";
-        CustomerUpdateRequest updateRequest=new CustomerUpdateRequest(email,  newPassword, "password");
-
-        webTestClient.method(HttpMethod.PATCH)
-                .uri("/api/v1/customers/update")
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(token))
                 .body(Mono.just(updateRequest), CustomerUpdateRequest.class)
                 .exchange()
                 .expectStatus()
                 .isOk();
+
+        ApplicationExceptionPayload expected= apiClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth")
+                        .queryParam("username", registrationRequest.email())
+                        .queryParam("password", registrationRequest.password())
+                        .build())
+                .exchange()
+                .expectStatus()
+                .isUnauthorized()
+                .expectBody(ApplicationExceptionPayload.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(expected)
+                .satisfies(ex->{
+                    assertThat(ex.message().equals("Incorrect password")).isTrue();
+                    assertThat(ex.exception().equals(ErrorCode.AUTHENTICATION_FAILED)).isTrue();
+                });
+
+        apiClient.post()
+                .uri(uriBuilder->uriBuilder
+                        .path("/api/v1/auth")
+                        .queryParam("username", registrationRequest.email())
+                        .queryParam("password", newPassword)
+                        .build())
+                .exchange()
+                .expectStatus()
+                .isOk();
+    }
+
+
+    @Test
+    void canAccessVipSpaceIfHasExpectedAuthority(){
+        String token=registrationAndAuth("vip");
+
+        String expected=apiClient.get()
+                .uri("/api/v1/vip")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(token))
+                .accept(MediaType.TEXT_PLAIN)
+                .exchange()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(expected.equals("Hello ["+registrationRequest.email()+"] welcome to the VIP space")).isTrue();
+    }
+
+    @Test
+    void canAccessPublicSpaceIfHasExpectedAuthority(){
+        String token=registrationAndAuth("customer");
+
+        String expected=apiClient.get()
+                .uri("/api/v1/public")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(token))
+                .accept(MediaType.TEXT_PLAIN)
+                .exchange()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(expected.equals("Hello ["+registrationRequest.email()+"] welcome to the public space")).isTrue();
+    }
+
+    @Test
+    void cantAccessVipSpaceIfHaveNotExpectedAuthority(){
+        String token=registrationAndAuth("customer");
+
+        apiClient.get()
+                .uri("/api/v1/vip")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(token))
+                .exchange()
+                .expectStatus()
+                .isForbidden();
     }
 }
