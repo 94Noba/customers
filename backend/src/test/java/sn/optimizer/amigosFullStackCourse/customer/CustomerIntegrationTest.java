@@ -137,8 +137,9 @@ public class CustomerIntegrationTest {
     @Test
     void canUpdateCustomerEmail(){
         String token=registrationAndAuth("vip");
-
-        String newEmail="testest5@optimizer.com";
+        Random random=new Random(500);
+        int id= random.nextInt(7, 1000);
+        String newEmail="testest"+id+"@optimizer.com";
         CustomerUpdateRequest updateRequest=new CustomerUpdateRequest(registrationRequest.email(), newEmail,
                 "email");
 
